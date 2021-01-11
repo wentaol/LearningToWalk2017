@@ -1,0 +1,74 @@
+# Brand new set-up
+
+# install Anaconda
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+
+# install Intel stuff
+conda config --add channels intel
+conda update conda
+# Change to correct conda env
+conda install intelpython3_core
+conda install mkl-devel
+# Install MKL
+mkdir tmp
+cd tmp
+wget http://registrationcenter-download.intel.com/akdlm/irc_nas/tec/11544/l_mkl_2017.3.196.tgz
+tax -zxvf l_mkl_2017.3.196.tgz
+sudo apt-get install g++
+
+
+# Compile opensim
+sudo apt-get --yes install git cmake cmake-curses-gui \
+                           freeglut3-dev libxi-dev libxmu-dev \
+                           liblapack-dev swig python-dev \
+                           openjdk-8-jdk make
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 # change to JAVA_HOME
+conda create python=3.5 -n opensim-install
+source activate opensim-install
+mkdir opensim-install
+cd opensim-install
+conda install --yes -c conda-forge lapack toolchain
+conda install --yes -c kidzik opensim freeglut
+conda install --yes cmake openblas swig
+git clone https://github.com/opensim-org/opensim-core.git
+mkdir opensim_dependencies_build
+cd opensim_dependencies_build
+cmake ../opensim-core/dependencies/ \
+      -DCMAKE_INSTALL_PREFIX='~/opensim_dependencies_install' \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+make -j36 # Change number to number of cores
+cd ../
+mkdir opensim_build
+cd opensim_build
+cmake ../opensim-core \
+      -DCMAKE_INSTALL_PREFIX="~/opensim_install" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DOPENSIM_DEPENDENCIES_DIR="~/opensim_dependencies_install" \
+      -DBUILD_PYTHON_WRAPPING=ON \
+      -DOPENSIM_PYTHON_VERSION=3 \
+      -DWITH_BTK=ON
+make -j36 # Change number to number of cores
+make install
+# May have to change the anaconda directory
+cp -r ~/opensim_install/* ~/anaconda3/envs/rllab3
+
+# OpenSim variables
+export OPENSIM_HOME=~/opensim_install
+export LD_LIBRARY_PATH=$OPENSIM_HOME/lib
+export LIBRARY_PATH=$OPENSIM_HOME/lib
+
+# Other post compile stuff
+sudo apt-get install libopenblas-base
+
+# Running the examples
+sudo apt-get install ffmpeg
+
+# Running XFVB for linux headless
+xvfb-run -s "-screen 0 640x480x24" python examples/trpo_gym_pendulum.py
+
+# Getting the conda environment set-up for rllab3
+(from the RLLab root directory) ./scripts/setup_linux.sh
+
+# Install OSIM
+pip install git+https://github.com/stanfordnmbl/osim-rl.git
+
